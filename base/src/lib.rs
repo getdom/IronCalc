@@ -51,7 +51,7 @@ mod cast;
 mod conditional_formatting;
 mod constants;
 mod cut_paste;
-mod functions;
+pub mod functions;
 mod implicit_intersection;
 pub mod links;
 mod merged_cells;
