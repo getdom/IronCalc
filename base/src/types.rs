@@ -426,7 +426,7 @@ pub struct Comment {
 }
 
 // ECMA-376-1:2016 section 18.5.1.2
-#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct Table {
     pub name: String,
     pub display_name: String,
@@ -444,7 +444,7 @@ pub struct Table {
 
 // totals_row_label vs totals_row_function might be mutually exclusive. Use an enum?
 // the totals_row_function is an enum not String methinks
-#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct TableColumn {
     pub id: u32,
     pub name: String,
@@ -469,7 +469,7 @@ impl Default for TableColumn {
     }
 }
 
-#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone, Default)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone, Default)]
 pub struct TableStyleInfo {
     pub name: Option<String>,
     pub show_first_column: bool,
