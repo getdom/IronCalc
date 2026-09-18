@@ -188,6 +188,23 @@ impl<'a> Model<'a> {
     }
 
     /// Reparses all formulas and defined names
+    /// Adds or replaces a table (structured references like `Sales[ARR]`
+    /// resolve against it) and re-parses every formula.
+    pub fn upsert_table(&mut self, table: crate::types::Table) {
+        self.workbook.tables.insert(table.name.clone(), table);
+        self.parser.set_tables(self.workbook.tables.clone());
+        self.reset_parsed_structures();
+    }
+
+    /// Removes a table by name and re-parses every formula. Formulas that
+    /// referenced it become parse errors, as in Excel.
+    pub fn remove_table(&mut self, name: &str) -> Option<crate::types::Table> {
+        let t = self.workbook.tables.remove(name);
+        self.parser.set_tables(self.workbook.tables.clone());
+        self.reset_parsed_structures();
+        t
+    }
+
     pub(crate) fn reset_parsed_structures(&mut self) {
         let defined_names = self.workbook.get_defined_names_with_scope();
         self.parser
