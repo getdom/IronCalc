@@ -1213,6 +1213,7 @@ impl<'a> UserModel<'a> {
                         custom_width: col.custom_width,
                         style: col.style,
                         hidden: col.hidden,
+                        outline_level: col.outline_level,
                     });
                     break;
                 }

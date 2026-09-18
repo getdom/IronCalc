@@ -292,6 +292,8 @@ pub struct Row {
     pub custom_height: bool,
     pub s: i32,
     pub hidden: bool,
+    /// Outline (group) level, 0 = none. ECMA-376 18.3.1.73 outlineLevel.
+    pub outline_level: i32,
 }
 
 // ECMA-376-1:2016 section 18.3.1.13
@@ -306,6 +308,8 @@ pub struct Col {
     pub custom_width: bool,
     pub hidden: bool,
     pub style: Option<i32>,
+    /// Outline (group) level, 0 = none.
+    pub outline_level: i32,
 }
 
 /// Cell type enum matching Excel TYPE() function values.

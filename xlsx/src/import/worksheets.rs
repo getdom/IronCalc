@@ -149,6 +149,7 @@ fn load_columns(ws: Node) -> Result<Vec<Col>, XlsxError> {
             let width = width.parse::<f64>()?;
             let custom_width = get_bool_false(col, "customWidth");
             let hidden = get_bool_false(col, "hidden");
+            let outline_level = col.attribute("outlineLevel").and_then(|v| v.parse::<i32>().ok()).unwrap_or(0);
             let style = col
                 .attribute("style")
                 .map(|s| s.parse::<i32>().unwrap_or(0));
@@ -159,6 +160,7 @@ fn load_columns(ws: Node) -> Result<Vec<Col>, XlsxError> {
                 custom_width,
                 style,
                 hidden,
+                outline_level,
             })
         }
     }
@@ -945,9 +947,10 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
         };
         let custom_format = get_bool_false(row, "customFormat");
         let hidden = get_bool_false(row, "hidden");
+        let outline_level = row.attribute("outlineLevel").and_then(|v| v.parse::<i32>().ok()).unwrap_or(0);
 
         if let Some(row_index) = row_index {
-            if custom_height || custom_format || row_style != 0 || has_height_attribute || hidden {
+            if custom_height || custom_format || row_style != 0 || has_height_attribute || hidden || outline_level > 0 {
                 rows.push(Row {
                     r: row_index,
                     height,
@@ -955,6 +958,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                     custom_height,
                     custom_format,
                     hidden,
+                    outline_level,
                 });
             }
         }

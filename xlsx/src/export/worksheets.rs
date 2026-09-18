@@ -180,8 +180,9 @@ pub(crate) fn get_worksheet_xml(
             None => "".to_string(),
         };
         let hidden = if col.hidden { " hidden=\"1\"" } else { "" };
+        let outline = if col.outline_level > 0 { format!(" outlineLevel=\"{}\"", col.outline_level) } else { String::new() };
         cols_str.push(format!(
-            "<col min=\"{min}\" max=\"{max}\" width=\"{width}\" customWidth=\"{custom_width}\"{column_style}{hidden}/>"
+            "<col min=\"{min}\" max=\"{max}\" width=\"{width}\" customWidth=\"{custom_width}\"{column_style}{hidden}{outline}/>"
         ));
     }
 
@@ -538,13 +539,19 @@ pub(crate) fn get_worksheet_xml(
                 } else {
                     ""
                 };
+                let outline_str = if row_style.outline_level > 0 {
+                    format!(r#" outlineLevel="{}""#, row_style.outline_level)
+                } else {
+                    String::new()
+                };
                 format!(
-                    r#" s="{}" ht="{}" customHeight="{}" customFormat="{}"{}"#,
+                    r#" s="{}" ht="{}" customHeight="{}" customFormat="{}"{}{}"#,
                     row_style.s,
                     row_style.height,
                     i32::from(row_style.custom_height),
                     i32::from(row_style.custom_format),
                     hidden_str,
+                    outline_str,
                 )
             }
             None => "".to_string(),

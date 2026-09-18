@@ -14,6 +14,7 @@ fn test_column_width() {
         style: Some(6),
         width: 8.7,
         hidden: false,
+        outline_level: 0,
     }];
     model.workbook.worksheets[0].cols = cols;
     model
@@ -40,6 +41,7 @@ fn test_column_width_lower_edge() {
         style: Some(1),
         width: 10.0,
         hidden: false,
+        outline_level: 0,
     }];
     model.workbook.worksheets[0].cols = cols;
     model
@@ -68,6 +70,7 @@ fn test_column_width_higher_edge() {
         style: Some(1),
         width: 10.0,
         hidden: false,
+        outline_level: 0,
     }];
     model.workbook.worksheets[0].cols = cols;
     model

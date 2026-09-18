@@ -112,6 +112,7 @@ impl Worksheet {
             custom_width: false,
             style: Some(style_index),
             hidden: false,
+            outline_level: 0,
         }];
         Ok(())
     }
@@ -141,6 +142,7 @@ impl Worksheet {
             custom_height: false,
             s: style_index,
             hidden: false,
+            outline_level: 0,
         });
         Ok(())
     }
@@ -196,6 +198,7 @@ impl Worksheet {
                 custom_width,
                 style: cols[index].style,
                 hidden: cols[index].hidden,
+                outline_level: cols[index].outline_level,
             };
             let col = Col {
                 min: column,
@@ -204,6 +207,7 @@ impl Worksheet {
                 custom_width,
                 style: None,
                 hidden: false,
+                outline_level: 0,
             };
             let post = Col {
                 min: column + 1,
@@ -212,6 +216,7 @@ impl Worksheet {
                 custom_width,
                 style: cols[index].style,
                 hidden: cols[index].hidden,
+                outline_level: cols[index].outline_level,
             };
             cols.remove(index);
             if column != max {
@@ -419,6 +424,7 @@ impl Worksheet {
             custom_height: false,
             s: 0,
             hidden,
+            outline_level: 0,
         });
         Ok(())
     }
@@ -451,6 +457,7 @@ impl Worksheet {
             custom_height: true,
             s: 0,
             hidden,
+            outline_level: 0,
         });
         Ok(())
     }
@@ -495,6 +502,7 @@ impl Worksheet {
             custom_width: width != constants::DEFAULT_COLUMN_WIDTH,
             style,
             hidden,
+            outline_level: 0,
         };
         let mut index = 0;
         let mut split = false;
@@ -528,6 +536,7 @@ impl Worksheet {
                 custom_width: cols[index].custom_width,
                 style: cols[index].style,
                 hidden: cols[index].hidden,
+                outline_level: cols[index].outline_level,
             };
             let post = Col {
                 min: column + 1,
@@ -536,6 +545,7 @@ impl Worksheet {
                 custom_width: cols[index].custom_width,
                 style: cols[index].style,
                 hidden: cols[index].hidden,
+                outline_level: cols[index].outline_level,
             };
             col.style = cols[index].style;
             cols.remove(index);
