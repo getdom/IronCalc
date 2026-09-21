@@ -351,6 +351,18 @@ impl<'a> Model<'a> {
                 // The implicit intersection of a scalar is the scalar itself.
                 other => other,
             },
+            // Functions that return a reference keep it in reference context, so
+            // `INDIRECT("E"&F6):D6` or `OFFSET(A1,1,0):B9` is a range, as in Excel.
+            Node::FunctionKind { kind, args }
+                if matches!(
+                    kind,
+                    crate::functions::Function::Indirect
+                        | crate::functions::Function::Offset
+                        | crate::functions::Function::Index
+                ) =>
+            {
+                self.evaluate_function(kind, args, cell)
+            }
             _ => self.evaluate_node_in_context(node, cell),
         }
     }
@@ -374,9 +386,19 @@ impl<'a> Model<'a> {
                     && left2.row == right2.row
                     && left2.column == right2.column
                 {
+                    // The bounds come in any order (INDIRECT("E2"):D6 is D2:E6, as the parser
+                    // normalises literal ranges); the range is the rectangle they span.
                     return CalcResult::Range {
-                        left: left1,
-                        right: right2,
+                        left: CellReferenceIndex {
+                            sheet: left1.sheet,
+                            row: left1.row.min(right2.row),
+                            column: left1.column.min(right2.column),
+                        },
+                        right: CellReferenceIndex {
+                            sheet: right2.sheet,
+                            row: left1.row.max(right2.row),
+                            column: left1.column.max(right2.column),
+                        },
                     };
                 }
                 CalcResult::Error {
