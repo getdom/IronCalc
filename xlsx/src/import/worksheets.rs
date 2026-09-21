@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
 use ironcalc_base::expressions::parser::{
+    Parser,
     new_parser_english, static_analysis::add_implicit_intersection,
 };
 use std::{collections::HashMap, io::Read, num::ParseIntError};
@@ -318,15 +319,15 @@ fn parse_reference(s: &str) -> Result<CellReferenceRC, ParseReferenceError> {
     })
 }
 
+/// Converts one formula with a parser built once per sheet: a workbook with
+/// twenty-five thousand defined names and sixty thousand formulas must not
+/// build a parser (and copy every name) for each of them.
 fn from_a1_to_rc(
     formula: String,
-    worksheets: &[String],
+    parser: &mut Parser,
     context: String,
-    tables: HashMap<String, Table>,
-    defined_names: Vec<DefinedNameS>,
     is_array_formula: bool,
 ) -> Result<String, XlsxError> {
-    let mut parser = new_parser_english(worksheets.to_owned(), defined_names, tables);
     let cell_reference =
         parse_reference(&context).map_err(|error| XlsxError::Xml(error.to_string()))?;
     let mut t = parser.parse(&formula, &cell_reference);
@@ -903,6 +904,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     // holds the row heights
     let mut rows = Vec::new();
     let mut sheet_data = SheetData::new();
+    let mut parser = new_parser_english(worksheets.to_owned(), defined_names.clone(), tables.clone());
     let sheet_data_nodes = ws
         .children()
         .filter(|n| n.has_tag_name("sheetData"))
@@ -1115,14 +1117,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                                 // It's the anchor cell. We do not use the ref attribute in IronCalc
                                 let formula = formula_node.text().unwrap_or("").to_string();
                                 let context = format!("{sheet_name}!{cell_ref}");
-                                let formula = from_a1_to_rc(
-                                    formula,
-                                    worksheets,
-                                    context,
-                                    tables.clone(),
-                                    defined_names.clone(),
-                                    false,
-                                )?;
+                                let formula = from_a1_to_rc(formula, &mut parser, context, false)?;
                                 match index_map.get(&si) {
                                     Some(index) => {
                                         // The index for that formula already exists meaning we bumped into a daughter cell first
@@ -1205,14 +1200,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                         }
                         let formula = formula_node.text().unwrap_or("").to_string();
                         let context = format!("{sheet_name}!{cell_ref}");
-                        let formula = from_a1_to_rc(
-                            formula,
-                            worksheets,
-                            context,
-                            tables.clone(),
-                            defined_names.clone(),
-                            true,
-                        )?;
+                        let formula = from_a1_to_rc(formula, &mut parser, context, true)?;
 
                         match get_formula_index(&formula, &shared_formulas) {
                             Some(index) => formula_index = index,
@@ -1226,14 +1214,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
                         // Its a cell with a simple formula
                         let formula = formula_node.text().unwrap_or("").to_string();
                         let context = format!("{sheet_name}!{cell_ref}");
-                        let formula = from_a1_to_rc(
-                            formula,
-                            worksheets,
-                            context,
-                            tables.clone(),
-                            defined_names.clone(),
-                            false,
-                        )?;
+                        let formula = from_a1_to_rc(formula, &mut parser, context, false)?;
 
                         match get_formula_index(&formula, &shared_formulas) {
                             Some(index) => formula_index = index,

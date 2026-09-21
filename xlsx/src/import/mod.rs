@@ -96,7 +96,12 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
 ) -> Result<Workbook, XlsxError> {
     let mut archive = zip::ZipArchive::new(reader)?;
 
+    let timing = std::env::var("IRONCALC_TIMING").is_ok();
+    let t = std::time::Instant::now();
     let mut shared_strings = read_shared_strings(&mut archive)?;
+    if timing {
+        eprintln!("ironcalc: shared strings {} ms", t.elapsed().as_millis());
+    }
     let mut workbook = load_workbook(&mut archive)?;
     let rels = load_relationships(&mut archive)?;
     let theme_path = resolve_theme_path(&rels);
@@ -106,6 +111,10 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
     // stored in x14 `extLst` extensions carry inline `<x14:dxf>` formats that we
     // append to `styles.dxfs`, referencing them back by index from the rule.
     let mut styles = load_styles(&mut archive, &theme)?;
+    if timing {
+        eprintln!("ironcalc: workbook+rels+theme+styles {} ms", t.elapsed().as_millis());
+    }
+
     let (worksheets, selected_sheet) = load_sheets(
         &mut archive,
         &rels,
