@@ -35,7 +35,12 @@ pub(crate) fn get_alignment(alignment: &Alignment) -> String {
     } else {
         "".to_string()
     };
-    format!("<alignment{wrap_text}{horizontal}{vertical}/>")
+    let indent = if alignment.indent > 0 {
+        format!(" indent=\"{}\"", alignment.indent)
+    } else {
+        "".to_string()
+    };
+    format!("<alignment{wrap_text}{horizontal}{vertical}{indent}/>")
 }
 
 fn get_border_xml_inner(border: &Option<BorderItem>, name: &str) -> String {

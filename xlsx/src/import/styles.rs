@@ -376,11 +376,16 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
                 Some(_) => VerticalAlignment::default(),
                 None => VerticalAlignment::default(),
             };
+            let indent = alignment_node
+                .attribute("indent")
+                .and_then(|v| v.parse::<i32>().ok())
+                .unwrap_or(0);
 
             Some(Alignment {
                 horizontal,
                 vertical,
                 wrap_text,
+                indent,
             })
         } else {
             None
@@ -556,6 +561,10 @@ pub(super) fn parse_dxf(
                     horizontal,
                     vertical,
                     wrap_text,
+                    indent: child
+                        .attribute("indent")
+                        .and_then(|v| v.parse::<i32>().ok())
+                        .unwrap_or(0),
                 });
             }
             _ => {}

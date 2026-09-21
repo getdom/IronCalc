@@ -171,6 +171,7 @@ fn update_style(old_value: &Style, style_path: &str, value: &str) -> Result<Styl
             None => {
                 let alignment = Alignment {
                     wrap_text: boolean(value)?,
+                    indent: 0,
                     ..Default::default()
                 };
                 style.alignment = Some(alignment)

@@ -795,6 +795,7 @@ fn merge_center_keeps_the_rest_of_the_alignment() {
         alignment: Some(Alignment {
             vertical: VerticalAlignment::Top,
             wrap_text: true,
+            indent: 0,
             ..Default::default()
         }),
         ..Default::default()

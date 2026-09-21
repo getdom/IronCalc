@@ -733,6 +733,14 @@ pub struct Alignment {
     #[serde(default = "default_as_false")]
     #[serde(skip_serializing_if = "is_false")]
     pub wrap_text: bool,
+    /// Excel's indent level (each level is about three characters wide).
+    #[serde(default)]
+    #[serde(skip_serializing_if = "is_zero_i32")]
+    pub indent: i32,
+}
+
+fn is_zero_i32(v: &i32) -> bool {
+    *v == 0
 }
 
 #[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
