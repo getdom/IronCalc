@@ -63,6 +63,14 @@ fn is_range_reference(s: &str) -> bool {
 ///
 /// Assumes formula return a scalar
 pub fn add_implicit_intersection(node: &mut Node, add: bool) {
+    add_implicit_intersection_in(node, add, false)
+}
+
+/// `in_array`: the node sits inside an argument a function evaluates as an
+/// array (SUMPRODUCT, FILTER…). There, as in Excel's legacy evaluation, nested
+/// scalar functions broadcast over ranges instead of intersecting them, so no
+/// automatic `@` is added anywhere below.
+fn add_implicit_intersection_in(node: &mut Node, add: bool, in_array: bool) {
     match node {
         Node::BooleanKind(_)
         | Node::NumberKind(_)
@@ -80,13 +88,13 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         Node::ImplicitIntersection { child, .. } => {
             // We need to check wether the II can be automatic or not
             let mut new_node = child.as_ref().clone();
-            add_implicit_intersection(&mut new_node, add);
+            add_implicit_intersection_in(&mut new_node, add, in_array);
             if matches!(&new_node, Node::ImplicitIntersection { .. }) {
                 *node = new_node
             }
         }
         Node::SpillRangeOperator { child } => {
-            add_implicit_intersection(child, add);
+            add_implicit_intersection_in(child, add, in_array);
         }
         Node::RangeKind {
             row1,
@@ -100,7 +108,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
             absolute_row2,
             absolute_column2,
         } => {
-            if add {
+            if add && !in_array {
                 *node = Node::ImplicitIntersection {
                     automatic: true,
                     child: Box::new(Node::RangeKind {
@@ -119,7 +127,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
             }
         }
         Node::OpRangeKind { left, right } => {
-            if add {
+            if add && !in_array {
                 *node = Node::ImplicitIntersection {
                     automatic: true,
                     child: Box::new(Node::OpRangeKind {
@@ -131,14 +139,14 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         }
 
         // operations
-        Node::UnaryKind { right, .. } => add_implicit_intersection(right, add),
+        Node::UnaryKind { right, .. } => add_implicit_intersection_in(right, add, in_array),
         Node::OpConcatenateKind { left, right }
         | Node::OpSumKind { left, right, .. }
         | Node::OpProductKind { left, right, .. }
         | Node::OpPowerKind { left, right, .. }
         | Node::CompareKind { left, right, .. } => {
-            add_implicit_intersection(left, add);
-            add_implicit_intersection(right, add);
+            add_implicit_intersection_in(left, add, in_array);
+            add_implicit_intersection_in(right, add, in_array);
         }
 
         Node::DefinedNameKind(v) => {
@@ -171,20 +179,23 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
             let arg_count = args.len();
             let signature = get_function_args_signature(kind, arg_count);
             for index in 0..arg_count {
-                if matches!(signature[index], Signature::Scalar)
+                let scalar = matches!(signature[index], Signature::Scalar);
+                if !in_array
+                    && scalar
                     && matches!(
                         run_static_analysis_on_node(&args[index]),
                         StaticResult::Range(_, _) | StaticResult::Unknown
                     )
                 {
-                    add_implicit_intersection(&mut args[index], true);
+                    add_implicit_intersection_in(&mut args[index], true, false);
                 } else {
-                    add_implicit_intersection(&mut args[index], false);
+                    add_implicit_intersection_in(&mut args[index], false, in_array || !scalar);
                 }
             }
             // There are some function that will never add an automatic II:
             let new_function = matches!(kind, Function::Let | Function::Lambda);
             if !new_function
+                && !in_array
                 && add
                 && matches!(
                     run_static_analysis_on_node(node),

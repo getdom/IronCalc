@@ -120,11 +120,9 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
     }
 
     let mut fonts = Vec::new();
-    let font_nodes = style_sheet
-        .children()
-        .filter(|n| n.has_tag_name("fonts"))
-        .collect::<Vec<Node>>()[0];
-    for font in font_nodes.children() {
+    // A styles part may leave a section out (some exporters do): then it is simply empty.
+    let font_nodes = style_sheet.children().find(|n| n.has_tag_name("fonts"));
+    for font in font_nodes.into_iter().flat_map(|n| n.children()) {
         let mut sz = 11;
         let mut name = "Inter".to_string();
         // NOTE: In Excel you can have simple underline or double underline
@@ -206,11 +204,9 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
     }
 
     let mut fills = Vec::new();
-    let fill_nodes = style_sheet
-        .children()
-        .filter(|n| n.has_tag_name("fills"))
-        .collect::<Vec<Node>>()[0];
-    for fill in fill_nodes.children() {
+    // A styles part may leave a section out (some exporters do): then it is simply empty.
+    let fill_nodes = style_sheet.children().find(|n| n.has_tag_name("fills"));
+    for fill in fill_nodes.into_iter().flat_map(|n| n.children()) {
         let pattern_fill = fill
             .children()
             .filter(|n| n.has_tag_name("patternFill"))
@@ -250,11 +246,9 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
     }
 
     let mut borders = Vec::new();
-    let border_nodes = style_sheet
-        .children()
-        .filter(|n| n.has_tag_name("borders"))
-        .collect::<Vec<Node>>()[0];
-    for border in border_nodes.children() {
+    // A styles part may leave a section out (some exporters do): then it is simply empty.
+    let border_nodes = style_sheet.children().find(|n| n.has_tag_name("borders"));
+    for border in border_nodes.into_iter().flat_map(|n| n.children()) {
         let diagonal_up = get_bool_false(border, "diagonal_up");
         let diagonal_down = get_bool_false(border, "diagonal_down");
         let left = get_border(border, "left", theme, indexed)?;
@@ -274,11 +268,9 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
     }
 
     let mut cell_style_xfs = Vec::new();
-    let cell_style_xfs_nodes = style_sheet
-        .children()
-        .filter(|n| n.has_tag_name("cellStyleXfs"))
-        .collect::<Vec<Node>>()[0];
-    for xfs in cell_style_xfs_nodes.children() {
+    // A styles part may leave a section out (some exporters do): then it is simply empty.
+    let cell_style_xfs_nodes = style_sheet.children().find(|n| n.has_tag_name("cellStyleXfs"));
+    for xfs in cell_style_xfs_nodes.into_iter().flat_map(|n| n.children()) {
         let num_fmt_id = get_number(xfs, "numFmtId");
         let font_id = get_number(xfs, "fontId");
         let fill_id = get_number(xfs, "fillId");
@@ -306,11 +298,9 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
 
     let mut cell_styles = Vec::new();
     let mut style_names = HashMap::new();
-    let cell_style_nodes = style_sheet
-        .children()
-        .filter(|n| n.has_tag_name("cellStyles"))
-        .collect::<Vec<Node>>()[0];
-    for cell_style in cell_style_nodes.children() {
+    // A styles part may leave a section out (some exporters do): then it is simply empty.
+    let cell_style_nodes = style_sheet.children().find(|n| n.has_tag_name("cellStyles"));
+    for cell_style in cell_style_nodes.into_iter().flat_map(|n| n.children()) {
         let name = get_attribute(&cell_style, "name")?.to_string();
         let xf_id = get_number(cell_style, "xfId");
         let builtin_id = get_number(cell_style, "builtinId");
@@ -329,11 +319,9 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
     }
 
     let mut cell_xfs = Vec::new();
-    let cell_xfs_nodes = style_sheet
-        .children()
-        .filter(|n| n.has_tag_name("cellXfs"))
-        .collect::<Vec<Node>>()[0];
-    for xfs in cell_xfs_nodes.children() {
+    // A styles part may leave a section out (some exporters do): then it is simply empty.
+    let cell_xfs_nodes = style_sheet.children().find(|n| n.has_tag_name("cellXfs"));
+    for xfs in cell_xfs_nodes.into_iter().flat_map(|n| n.children()) {
         // `xfId` is optional on a cellXfs <xf> (it references cellStyleXfs;
         // many Excel/LibreOffice files omit it). Default to 0 when absent.
         let xf_id = xfs

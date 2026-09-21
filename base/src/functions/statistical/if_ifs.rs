@@ -70,7 +70,7 @@ impl<'a> Model<'a> {
             // NB: We cannot do:
             // fn_criteria.push(build_criteria(&criterion));
             // because criterion doesn't live long enough
-            let result = self.evaluate_node_in_context(&args[case_index * 2], cell);
+            let result = self.evaluate_node_with_reference(&args[case_index * 2], cell);
             if result.is_error() {
                 return result;
             }
@@ -183,7 +183,7 @@ impl<'a> Model<'a> {
         if args_count < 3 || args_count.is_multiple_of(2) {
             return Err(CalcResult::new_args_number_error(cell));
         }
-        let arg_0 = self.evaluate_node_in_context(&args[0], cell);
+        let arg_0 = self.evaluate_node_with_reference(&args[0], cell);
         if arg_0.is_error() {
             return Err(arg_0);
         }
@@ -217,7 +217,7 @@ impl<'a> Model<'a> {
             // NB: We cannot do:
             // fn_criteria.push(build_criteria(&criterion));
             // because criterion doesn't live long enough
-            let result = self.evaluate_node_in_context(&args[case_index * 2 - 1], cell);
+            let result = self.evaluate_node_with_reference(&args[case_index * 2 - 1], cell);
             if result.is_error() {
                 return Err(result);
             }
@@ -330,7 +330,8 @@ impl<'a> Model<'a> {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<Range, CalcResult> {
-        let value = self.evaluate_node_in_context(node, cell);
+        // Reference context: a single cell is a 1x1 range here, as in Excel.
+        let value = self.evaluate_node_with_reference(node, cell);
         if value.is_error() {
             return Err(value);
         }

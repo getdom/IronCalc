@@ -693,7 +693,17 @@ impl<'a> Model<'a> {
                 }),
             },
             OpPowerKind { left, right } => {
-                self.handle_arithmetic(left, right, cell, &|f1, f2| Ok(f1.powf(f2)))
+                // Excel: a negative base with a fractional exponent is #NUM!, 0^-n is #DIV/0!.
+                self.handle_arithmetic(left, right, cell, &|f1, f2| {
+                    let r = f1.powf(f2);
+                    if r.is_nan() {
+                        Err(Error::NUM)
+                    } else if r.is_infinite() {
+                        Err(Error::DIV)
+                    } else {
+                        Ok(r)
+                    }
+                })
             }
             FunctionKind { kind, args } => self.evaluate_function(kind, args, cell),
             NamedFunctionKind { name, args, id } => {
