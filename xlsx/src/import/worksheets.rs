@@ -70,6 +70,17 @@ impl WorkbookXML {
     }
 }
 
+/// 1 → "A", 27 → "AA": the letters of a column index.
+fn column_letters(mut column: i32) -> String {
+    let mut out = Vec::new();
+    while column > 0 {
+        let rem = (column - 1) % 26;
+        out.push((b'A' + rem as u8) as char);
+        column = (column - 1) / 26;
+    }
+    out.iter().rev().collect()
+}
+
 fn parse_cell_reference(cell: &str) -> Result<(i32, i32), String> {
     if let Some(r) = parse_reference_a1(cell) {
         Ok((r.row, r.column))
@@ -918,12 +929,17 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     // Cells part of an array formula
     let mut array_cell = HashMap::new();
 
+    // Some exporters (HubSpot, others) write rows and cells without their `r`
+    // attribute: they are then taken in order, as Excel does.
+    let mut next_row: i32 = 1;
     for row in sheet_data_nodes.children() {
         // This is the row number 1-indexed
         let mut row_index = match get_attribute(&row, "r") {
             Ok(s) => Some(s.parse::<i32>()?),
             Err(_) => None,
         };
+        let row_hint = row_index.unwrap_or(next_row);
+        let mut next_column: i32 = 0;
         // `spans` is not used in IronCalc at the moment (it's an optimization)
         // let spans = row.attribute("spans");
         // This is the height of the row
@@ -983,8 +999,19 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
         // vm: value metadata (used for #SPILL! and #CALC! errors)
         // ph: Show Phonetic, unused
         for cell in row.children() {
-            let cell_ref = get_attribute(&cell, "r")?;
-            let (r_index, column_index) = parse_cell_reference(cell_ref).map_err(XlsxError::Xml)?;
+            if !cell.has_tag_name("c") {
+                continue;
+            }
+            let (r_index, column_index) = match cell.attribute("r") {
+                Some(cell_ref) => parse_cell_reference(cell_ref).map_err(XlsxError::Xml)?,
+                None => (row_hint, next_column + 1),
+            };
+            next_column = column_index;
+            let cell_ref_owned = match cell.attribute("r") {
+                Some(x) => x.to_string(),
+                None => format!("{}{}", column_letters(column_index), r_index),
+            };
+            let cell_ref = cell_ref_owned.as_str();
             // Update the row_index if it was not set before
             if row_index.is_none() {
                 row_index = Some(r_index);
@@ -1248,13 +1275,9 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
             );
             data_row.insert(column_index, cell);
         }
-        if let Some(row_index) = row_index {
-            sheet_data.insert(row_index, data_row);
-        } else {
-            return Err(XlsxError::Xml(
-                "Row without a row index (r attribute)".to_string(),
-            ));
-        }
+        let row_index = row_index.unwrap_or(row_hint);
+        sheet_data.insert(row_index, data_row);
+        next_row = row_index + 1;
     }
 
     let merged_cells = load_merge_cells(ws)?;

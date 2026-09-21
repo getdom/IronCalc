@@ -89,7 +89,11 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
     archive: &mut zip::read::ZipArchive<R>,
     theme: &Theme,
 ) -> Result<Styles, XlsxError> {
-    let mut file = archive.by_name("xl/styles.xml")?;
+    // A workbook without a styles part (minimal exporters) has the default styles.
+    let mut file = match archive.by_name("xl/styles.xml") {
+        Ok(f) => f,
+        Err(_) => return Ok(Styles::default()),
+    };
     let mut text = String::new();
     file.read_to_string(&mut text)?;
     let doc = roxmltree::Document::parse(&text)?;
