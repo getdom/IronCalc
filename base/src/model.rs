@@ -168,6 +168,7 @@ fn formula_value_to_spill_value(v: &FormulaValue) -> SpillValue {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
 pub(crate) enum CellOrRange {
     // (sheet, row, column)
     Cell((u32, i32, i32)),
@@ -220,6 +221,12 @@ pub struct Model<'a> {
     pub(crate) spill_cells: Vec<CellReferenceIndex>,
     /// A dictionary to keep track of which cells or ranges support a given cell.
     pub(crate) support: HashMap<CellReferenceIndex, Vec<CellOrRange>>,
+    /// Who reads what, inverted from `support` after a full evaluation (see incremental.rs).
+    pub(crate) index: crate::incremental::DependencyIndex,
+    /// Cells changed since the last evaluation.
+    pub(crate) dirty: Vec<crate::incremental::Key>,
+    /// Cells whose formula calls a volatile function: recalculated on every evaluation.
+    pub(crate) volatile: std::collections::HashSet<crate::incremental::Key>,
     /// Evaluated CF results per cell, keyed by (sheet_index, row, column).
     /// Rebuilt from scratch on every call to evaluate_conditional_formatting().
     pub(crate) cf_cache: HashMap<(u32, i32, i32), Vec<CfCellResult>>,
@@ -244,7 +251,7 @@ impl<'a> Model<'a> {
         self.last_variable_id += 1;
         id
     }
-    fn clear_variable_stack(&mut self) {
+    pub(crate) fn clear_variable_stack(&mut self) {
         self.variable_stack.clear();
         self.last_variable_id = 0;
     }
@@ -253,7 +260,7 @@ impl<'a> Model<'a> {
         self.last_lambda_id += 1;
         id
     }
-    fn clear_lambdas(&mut self) {
+    pub(crate) fn clear_lambdas(&mut self) {
         self.lambdas.clear();
         self.last_lambda_id = 0;
     }
@@ -279,6 +286,10 @@ impl<'a> Model<'a> {
                 if !absolute_column {
                     column1 += cell.column;
                 }
+                self.support
+                    .entry(cell)
+                    .or_default()
+                    .push(CellOrRange::Cell((*sheet_index, row1, column1)));
                 CalcResult::Range {
                     left: CellReferenceIndex {
                         sheet: *sheet_index,
@@ -321,6 +332,13 @@ impl<'a> Model<'a> {
                     column_right += cell.column;
                 }
                 // FIXME: HACK. The parser is currently parsing Sheet3!A1:A10 as Sheet3!A1:(present sheet)!A10
+                self.support.entry(cell).or_default().push(CellOrRange::Range((
+                    *sheet_index,
+                    row_left.min(row_right),
+                    column_left.min(column_right),
+                    row_left.max(row_right),
+                    column_left.max(column_right),
+                )));
                 CalcResult::Range {
                     left: CellReferenceIndex {
                         sheet: *sheet_index,
@@ -773,12 +791,16 @@ impl<'a> Model<'a> {
                 if let Ok(Some(parsed_defined_name)) = self.get_parsed_defined_name(name, *scope) {
                     match parsed_defined_name {
                         ParsedDefinedName::CellReference(reference) => {
+                            self.support.entry(cell).or_default().push(CellOrRange::Cell((reference.sheet, reference.row, reference.column)));
                             self.evaluate_cell(reference)
                         }
-                        ParsedDefinedName::RangeReference(range) => CalcResult::Range {
-                            left: range.left,
-                            right: range.right,
-                        },
+                        ParsedDefinedName::RangeReference(range) => {
+                            self.support.entry(cell).or_default().push(CellOrRange::Range((range.left.sheet, range.left.row, range.left.column, range.right.row, range.right.column)));
+                            CalcResult::Range {
+                                left: range.left,
+                                right: range.right,
+                            }
+                        }
                         ParsedDefinedName::LambdaDefinition(param_names, body) => {
                             let lambda_id = self.get_next_lambda_id();
                             self.lambdas.insert(lambda_id, (param_names, body));
@@ -1464,7 +1486,7 @@ impl<'a> Model<'a> {
     }
 
     #[inline(always)]
-    fn fetch_cell(&self, cell_reference: CellReferenceIndex) -> Option<&Cell> {
+    pub(crate) fn fetch_cell(&self, cell_reference: CellReferenceIndex) -> Option<&Cell> {
         self.workbook.worksheets[cell_reference.sheet as usize]
             .sheet_data
             .get(&cell_reference.row)?
@@ -1785,6 +1807,9 @@ impl<'a> Model<'a> {
             last_lambda_id: 0,
             spill_cells: Vec::new(),
             support: HashMap::new(),
+            index: Default::default(),
+            dirty: Vec::new(),
+            volatile: std::collections::HashSet::new(),
             cf_cache: HashMap::new(),
             links: HashMap::new(),
         };
@@ -3038,7 +3063,7 @@ impl<'a> Model<'a> {
 
     /// Returns all cells in the current spill area of a dynamic-formula anchor,
     /// including the anchor itself.
-    fn get_spill_area(&self, cell_ref: CellReferenceIndex) -> Vec<CellReferenceIndex> {
+    pub(crate) fn get_spill_area(&self, cell_ref: CellReferenceIndex) -> Vec<CellReferenceIndex> {
         let ws = match self.workbook.worksheet(cell_ref.sheet) {
             Ok(ws) => ws,
             Err(_) => return Vec::new(),
@@ -3109,6 +3134,7 @@ impl<'a> Model<'a> {
     /// Phase 2 evaluates every remaining cell in natural order.  Because all spill areas have
     /// already been written, regular cells always read the correct spill values.
     pub fn evaluate(&mut self) {
+        self.index.ready = false;
         self.collect_spill_cells();
 
         let n = self.spill_cells.len();
@@ -3163,6 +3189,7 @@ impl<'a> Model<'a> {
             });
         }
         self.evaluate_conditional_formatting();
+        self.build_dependency_index();
     }
 
     /// Removes the content of every cell in the range but leaves the style.

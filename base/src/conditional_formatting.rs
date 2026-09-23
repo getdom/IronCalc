@@ -145,8 +145,17 @@ impl<'a> Model<'a> {
             // Lower priority number = higher priority; process high-priority first so that
             // the first writer into cf_cache wins.
             cfs.sort_by_key(|cf| cf.priority);
+            // A rule over whole columns or rows ("A:A", "1:1048576") is evaluated on the
+            // used area of the sheet plus a margin, not on a million empty cells: what
+            // Excel shows beyond the data is the rule's style on blank cells, which the
+            // margin covers where anyone looks.
+            let dim = self.workbook.worksheets[sheet_idx].dimension();
+            let (max_row, max_col) = (dim.max_row + 40, dim.max_column + 10);
             for cf in cfs {
-                let ranges = parse_sqref(&cf.range);
+                let ranges: Vec<(i32, i32, i32, i32)> = parse_sqref(&cf.range)
+                    .into_iter()
+                    .map(|(r1, c1, r2, c2)| (r1, c1, r2.min(max_row.max(r1)), c2.min(max_col.max(c1))))
+                    .collect();
                 if ranges.is_empty() {
                     continue;
                 }

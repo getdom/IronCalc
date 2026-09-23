@@ -714,6 +714,9 @@ impl<'a> Model<'a> {
             last_lambda_id: 0,
             spill_cells: Vec::new(),
             support: HashMap::new(),
+            index: Default::default(),
+            dirty: Vec::new(),
+            volatile: std::collections::HashSet::new(),
             cf_cache: HashMap::new(),
             links: HashMap::new(),
         };

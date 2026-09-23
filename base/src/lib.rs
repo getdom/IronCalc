@@ -53,6 +53,8 @@ mod constants;
 mod cut_paste;
 pub mod functions;
 mod implicit_intersection;
+mod incremental;
+pub use incremental::RecalcReport;
 pub mod links;
 mod merged_cells;
 mod model;
