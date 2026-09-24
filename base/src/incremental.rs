@@ -149,6 +149,7 @@ impl Model<'_> {
         for k in &visited {
             self.cells.remove(k);
             self.links.remove(k);
+            self.forget_external_user(*k);
             if let Some(precs) = self.support.remove(&CellReferenceIndex { sheet: k.0, row: k.1, column: k.2 }) {
                 let mut ranges = 0;
                 for p in precs {

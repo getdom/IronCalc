@@ -717,6 +717,9 @@ impl<'a> Model<'a> {
             index: Default::default(),
             dirty: Vec::new(),
             volatile: std::collections::HashSet::new(),
+            externals: std::collections::HashMap::new(),
+            external_users: std::collections::HashMap::new(),
+            external_requests: std::collections::HashSet::new(),
             cf_cache: HashMap::new(),
             links: HashMap::new(),
         };

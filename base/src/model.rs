@@ -227,6 +227,12 @@ pub struct Model<'a> {
     pub(crate) dirty: Vec<crate::incremental::Key>,
     /// Cells whose formula calls a volatile function: recalculated on every evaluation.
     pub(crate) volatile: std::collections::HashSet<crate::incremental::Key>,
+    /// Values `API(...)` calls resolved to, put there by the application (see external.rs).
+    pub(crate) externals: HashMap<String, crate::ExternalValue>,
+    /// Which cells read which external key, as of their last evaluation.
+    pub(crate) external_users: crate::external::ExternalUsers,
+    /// Keys asked for and not yet in the cache.
+    pub(crate) external_requests: std::collections::HashSet<String>,
     /// Evaluated CF results per cell, keyed by (sheet_index, row, column).
     /// Rebuilt from scratch on every call to evaluate_conditional_formatting().
     pub(crate) cf_cache: HashMap<(u32, i32, i32), Vec<CfCellResult>>,
@@ -1810,6 +1816,9 @@ impl<'a> Model<'a> {
             index: Default::default(),
             dirty: Vec::new(),
             volatile: std::collections::HashSet::new(),
+            externals: HashMap::new(),
+            external_users: HashMap::new(),
+            external_requests: std::collections::HashSet::new(),
             cf_cache: HashMap::new(),
             links: HashMap::new(),
         };
@@ -3135,6 +3144,7 @@ impl<'a> Model<'a> {
     /// already been written, regular cells always read the correct spill values.
     pub fn evaluate(&mut self) {
         self.index.ready = false;
+        self.clear_external_users();
         self.collect_spill_cells();
 
         let n = self.spill_cells.len();

@@ -182,6 +182,7 @@ pub struct Functions {
     pub minute: String,
     pub second: String,
     pub today: String,
+    pub api: String,
     pub now: String,
     pub days: String,
     pub days360: String,

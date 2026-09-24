@@ -406,6 +406,7 @@ pub enum Function {
     Second,
     Now,
     Today,
+    Api,
     Year,
     Networkdays,
     NetworkdaysIntl,
@@ -932,6 +933,7 @@ impl_function_lookup! {
     second          => Second,
     now             => Now,
     today           => Today,
+    api             => Api,
     year            => Year,
     networkdays     => Networkdays,
     networkdaysintl => NetworkdaysIntl,
@@ -1450,6 +1452,7 @@ impl Function {
             Function::Second => functions.second.clone(),
             Function::Now => functions.now.clone(),
             Function::Today => functions.today.clone(),
+            Function::Api => functions.api.clone(),
             Function::Year => functions.year.clone(),
             Function::Networkdays => functions.networkdays.clone(),
             Function::NetworkdaysIntl => functions.networkdaysintl.clone(),
@@ -1614,7 +1617,7 @@ impl Function {
         }
     }
 
-    pub fn into_iter() -> IntoIter<Function, 496> {
+    pub fn into_iter() -> IntoIter<Function, 497> {
         [
             Function::And,
             Function::False,
@@ -1823,6 +1826,7 @@ impl Function {
             Function::Second,
             Function::Today,
             Function::Now,
+            Function::Api,
             Function::Days,
             Function::Days360,
             Function::Weekday,
@@ -2483,6 +2487,7 @@ impl<'a> Model<'a> {
             Function::Minute => self.fn_minute(args, cell),
             Function::Second => self.fn_second(args, cell),
             Function::Today => self.fn_today(args, cell),
+            Function::Api => self.fn_api(args, cell),
             Function::Now => self.fn_now(args, cell),
             Function::Days => self.fn_days(args, cell),
             Function::Days360 => self.fn_days360(args, cell),
